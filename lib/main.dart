@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import  'home_page.dart';
+
 
 void main() {
   runApp(MyApp());
@@ -26,7 +28,7 @@ class _MyHomePageState extends State<MyHomePage> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = [
-    Placeholder(color: Colors.red), // Example content for the Home Page
+    HomePage(), // Example content for the Home Page
     Placeholder(), // Example content for the Search Page
     Placeholder(), // Example content for the Favorites Page
   ];
@@ -40,9 +42,9 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('My App'),
-      ),
+      //appBar: AppBar(
+        //title: Text('My App'),
+      //),
       body: Stack(
         children: [
           // Page content
@@ -51,19 +53,22 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
           // Bottom navigation bar
           Positioned(
+
             left: 0,
             right: 0,
             bottom: 0,
             child: Container(
+
               decoration: BoxDecoration(
+
                 gradient: LinearGradient(
                   colors: [
-                    Colors.deepPurple.withOpacity(0.8),
+                    Colors.blue.withOpacity(0),
                     //Colors.blue.withOpacity(0.5),// Adjust opacity as needed
-                    Colors.blue.withOpacity(0), // Adjust opacity as needed
+                    Colors.blue.withOpacity(1), // Adjust opacity as needed
                   ],
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
               ),
               child: BottomNavigationBar(
@@ -71,6 +76,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 iconSize: 30,
                 items: const <BottomNavigationBarItem>[
                   BottomNavigationBarItem(
+                    backgroundColor: Colors.transparent,
                     icon: Icon(Icons.home),
                     label: '',
                   ),
