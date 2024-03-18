@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import  'home_page.dart';
-
+import 'search_page.dart';
 
 void main() {
   runApp(MyApp());
@@ -29,7 +29,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   final List<Widget> _pages = [
     HomePage(), // Example content for the Home Page
-    Placeholder(), // Example content for the Search Page
+    SearchPage(), // Example content for the Search Page
     Placeholder(), // Example content for the Favorites Page
   ];
 
@@ -90,7 +90,8 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                 ],
                 currentIndex: _selectedIndex,
-                selectedItemColor: Colors.white, // Set selected item color
+                selectedItemColor: Colors.white70,
+                unselectedItemColor: Colors.white30,
                 onTap: _onItemTapped,
               ),
             ),
