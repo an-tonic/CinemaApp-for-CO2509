@@ -1,7 +1,7 @@
-import 'dart:convert';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'no_internet_popup.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -11,25 +11,30 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late Future<Map<String, dynamic>> _fetchMoviesFuture;
+  late Future<List<dynamic>> _fetchMoviesFuture;
   double _scrollPosition = 0.0;
   final ScrollController _scrollController = ScrollController();
   Color? startColor;
   Color? endColor;
+  late DatabaseReference _db;
+
   @override
-  void initState() {
+  initState() {
     super.initState();
+    _db = FirebaseDatabase.instance.ref();
+
     _fetchMoviesFuture = fetchMovies();
 
     _scrollController.addListener(() {
       setState(() {
         double maxScrollExtent = _scrollController.position.maxScrollExtent;
         _scrollPosition = _scrollController.offset;
-        startColor = Color.lerp(Colors.blue.shade900, Colors.red.shade900, _scrollPosition / maxScrollExtent);
-        endColor = Color.lerp(Colors.red.shade900, Colors.blue.shade900, _scrollPosition / maxScrollExtent);
+        startColor = Color.lerp(Colors.blue.shade900, Colors.red.shade900,
+            _scrollPosition / maxScrollExtent);
+        endColor = Color.lerp(Colors.red.shade900, Colors.blue.shade900,
+            _scrollPosition / maxScrollExtent);
       });
     });
-
   }
 
   @override
@@ -38,27 +43,18 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  Future<Map<String, dynamic>> fetchMovies() async {
+  void _submit() {
+    setState(() {
+      _db.child('favorite_movie_id').set('test');
+    });
+  }
+
+  Future<List> fetchMovies() async {
     String url =
         'https://api.themoviedb.org/3/discover/movie?include_adult=false&include_video=false&language=en-US&page=1&sort_by=popularity.desc';
+    Map<String, dynamic> discoverResponse = await getURL(url, context);
 
-    String token =
-        'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJkYWMyNmI5ZTE4ZWI1NGRhZTBlYTBiMGY1YjFhZTY3ZSIsInN1YiI6IjY1ZjdmMTkwZTIxMDIzMDE3ZWVmYjgwMSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.5tUBCoCnS8XTDkXhOXgzPkjcb8Etkzb1ZvEfSUD6_Ws';
-    final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
-      throw Exception('Failed to connect to the internet');
-    } else {
-      http.Response response = await http.get(Uri.parse(url), headers: {
-        'Authorization': 'Bearer $token',
-        'accept': 'application/json',
-      });
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Failed to fetch movies');
-      }
-    }
+    return discoverResponse['results'];
   }
 
   @override
@@ -75,12 +71,11 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-      child: FutureBuilder<Map<String, dynamic>>(
+      child: FutureBuilder<List<dynamic>>(
         future: _fetchMoviesFuture,
         builder: (context, snapshot) {
           if (snapshot.hasData) {
-            Map<String, dynamic> data = snapshot.data!;
-            List<dynamic> results = data['results'];
+            List<dynamic> results = snapshot.data!;
             return GridView.builder(
               controller: _scrollController,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -100,21 +95,52 @@ class _HomePageState extends State<HomePage> {
                     borderRadius: BorderRadius.circular(10),
                     child: GridTile(
                       footer: GridTileBar(
-                        backgroundColor: Colors.black45,
-                        title: SingleChildScrollView(
-                          scrollDirection: Axis.vertical,
-                          child: Text(
-                            result['overview'],
-                            maxLines: 100,
-
-                            //textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 17),
+                          backgroundColor: Colors.black45,
+                          title: SingleChildScrollView(
+                            scrollDirection: Axis.vertical,
+                            child: Text(
+                              result['overview'],
+                              maxLines: 100,
+                              style: TextStyle(fontSize: 17),
+                            ),
+                          )),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (BuildContext context, Widget child,
+                                ImageChunkEvent? loadingProgress) {
+                              if (loadingProgress == null) {
+                                // Image has finished loading, so return the child (the actual image)
+                                return child;
+                              } else {
+                                // Image is still loading, so return a CircularProgressIndicator
+                                return const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator());
+                              }
+                            },
                           ),
-                        )
-                      ),
-                      child: Image.network(
-                        imageUrl,
-                        fit: BoxFit.cover,
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: IconButton(
+                              iconSize: 50,
+                              icon: Icon(Icons.bookmark),
+                              onPressed: () {
+                                _submit();
+                                // Add code here to push movie details to local storage
+                                // For example, you can use shared preferences to store the details
+                                // SharedPreferences.getInstance().then((prefs) {
+                                //   prefs.setString('movie_${result['id']}', jsonEncode(result));
+                                // });
+                              },
+                            ),
+                          )
+                        ],
                       ),
                     ),
                   ),

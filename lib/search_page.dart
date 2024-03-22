@@ -1,9 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'no_internet_popup.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({Key? key}) : super(key: key);
@@ -13,20 +10,20 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
-  late Future<Map<String, dynamic>> _fetchMoviesFuture;
   double _scrollPosition = 0.0;
   final ScrollController _scrollController = ScrollController();
   Color? startColor;
   Color? endColor;
-  String selectedGenre = "Genre";
+  String selectedGenre = "";
   String selectedYear = "";
   String searchQuery = "";
-  List<String> _genres = [];
+  List<dynamic> _genres = [];
   List<dynamic> searchResults = [];
 
   @override
   void initState() {
     super.initState();
+
     _loadGenres();
     _scrollController.addListener(() {
       setState(() {
@@ -43,62 +40,27 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void dispose() {
     _scrollController.dispose();
-
     super.dispose();
   }
 
-  void searchMovies(searchParam) async {
+  void searchMovies() async {
     String url =
-        'https://api.themoviedb.org/3/search/movie?query=$searchParam&include_adult=false&language=en-US&primary_release_year=$selectedYear&page=1';
+        'https://api.themoviedb.org/3/search/movie?query=$searchQuery&include_adult=false&language=en-US&primary_release_year=$selectedYear&page=1';
 
-    String token =
-        'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJkYWMyNmI5ZTE4ZWI1NGRhZTBlYTBiMGY1YjFhZTY3ZSIsInN1YiI6IjY1ZjdmMTkwZTIxMDIzMDE3ZWVmYjgwMSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.5tUBCoCnS8XTDkXhOXgzPkjcb8Etkzb1ZvEfSUD6_Ws';
-    final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
-      throw Exception('Failed to connect to the internet');
-    } else {
-      http.Response response = await http.get(Uri.parse(url), headers: {
-        'Authorization': 'Bearer $token',
-        'accept': 'application/json',
-      });
+    Map<String, dynamic> searchResponse = await getURL(url, context);
 
-      if (response.statusCode == 200) {
-         print(jsonDecode(response.body));
-      } else {
-        throw Exception('Failed to fetch movies');
-      }
-    }
+    setState(() {
+      searchResults = searchResponse['results'];
+    });
   }
 
   void _loadGenres() async {
-    print("HERE1");
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    print("HERE2");
-    if (prefs.containsKey('genres')) {
-      setState(() {
-        _genres = prefs.getStringList('genres')!;
-      });
-    } else {
-      // Fetch genres from API
-      try {
-        final response = await http.get(
-          Uri.parse('https://api.themoviedb.org/3/genre/movie/list?language=en'),
-        );
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          List<dynamic> genres = data['genres'];
-          setState(() {
-            _genres = genres.map((genre) => genre['name'].toString()).toList();
-          });
-          // Save genres to SharedPreferences
-          prefs.setStringList('genres', _genres);
-        } else {
-          throw Exception('Failed to fetch genres');
-        }
-      } catch (error) {
-        print('Error fetching genres: $error');
-      }
-    }
+    String url = 'https://api.themoviedb.org/3/genre/movie/list?language=en';
+    Map<String, dynamic> genresResponse = await getURL(url, context);
+
+    setState(() {
+      _genres = genresResponse['genres'];
+    });
   }
 
   @override
@@ -115,11 +77,12 @@ class _SearchPageState extends State<SearchPage> {
             ],
           ),
         ),
-        child: Column(
+        child: ListView(
+          controller: _scrollController,
           children: [
             // Search Bar
             Container(
-              margin: EdgeInsets.all(20.0),
+              margin: EdgeInsets.all(10.0),
               padding: EdgeInsets.symmetric(horizontal: 16.0),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(30.0),
@@ -132,7 +95,10 @@ class _SearchPageState extends State<SearchPage> {
                   Expanded(
                     child: TextField(
                       onChanged: (String newValue) {
-                        searchMovies(newValue);
+                        setState(() {
+                          searchQuery = newValue;
+                          searchMovies();
+                        });
                       },
                       decoration: const InputDecoration(
                         border: InputBorder.none,
@@ -145,11 +111,12 @@ class _SearchPageState extends State<SearchPage> {
             ),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.only(bottom: 20.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Container(
-                    margin: EdgeInsets.only(right: 10.0),
+                    margin: EdgeInsets.only(right: 10.0, left: 10.0),
                     padding: EdgeInsets.symmetric(horizontal: 16.0),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(30.0),
@@ -164,9 +131,12 @@ class _SearchPageState extends State<SearchPage> {
                           width: MediaQuery.of(context).size.width * 0.12,
                           child: TextField(
                             onChanged: (String newValue) {
-                              setState(() {
-                                selectedYear = newValue;
-                              });
+                              if (newValue.length == 4) {
+                                setState(() {
+                                  selectedYear = newValue;
+                                });
+                                searchMovies();
+                              }
                             },
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly
@@ -194,21 +164,31 @@ class _SearchPageState extends State<SearchPage> {
                       borderRadius: BorderRadius.circular(30.0),
                       color: Colors.white.withOpacity(0.5),
                     ),
-                    height: 40,
-                    child: DropdownButton<String>(
-                      value: selectedGenre,
-                      hint: const Text("Genre"),
-                      icon: Icon(Icons.arrow_drop_down),
-                      onChanged: (String? newValue) {
+                    child: DropdownMenu<String>(
+                      menuStyle: MenuStyle(
+                        visualDensity: VisualDensity.compact,
+                        padding: MaterialStateProperty.resolveWith(
+                            (states) => EdgeInsets.all(0)),
+                      ),
+                      inputDecorationTheme: const InputDecorationTheme(
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.all(10),
+                        constraints: BoxConstraints(
+                          maxHeight: 40,
+                        ),
+                      ),
+                      menuHeight: 400,
+                      hintText: "Genre",
+                      onSelected: (String? value) {
                         setState(() {
-                          selectedGenre = newValue!;
+                          selectedGenre = value!;
                         });
                       },
-                      items:
-                          _genres.map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
+                      dropdownMenuEntries: _genres
+                          .map<DropdownMenuEntry<String>>((dynamic genre) {
+                        return DropdownMenuEntry<String>(
+                          value: genre['id'].toString(),
+                          label: genre['name'],
                         );
                       }).toList(),
                     ),
@@ -216,7 +196,70 @@ class _SearchPageState extends State<SearchPage> {
                 ],
               ),
             ),
-            //TODO: Place tiles
+            ...searchResults.map((result) {
+              if (selectedGenre == "" ||
+                  result['genre_ids'].contains(int.parse(selectedGenre))) {
+                return Card(
+                  color: Colors.red.withOpacity(0.3),
+                  margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  child: Padding(
+                    padding: EdgeInsets.all(5),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Image
+                        Column(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                'https://image.tmdb.org/t/p/w92/${result['poster_path']}',
+                                fit: BoxFit.cover,
+                                width: 70,
+                                height: 100,
+                              ),
+                            ),
+                            Text(result['release_date']),
+                          ],
+                        ),
+                        const SizedBox(width: 10),
+                        // Title and Overview
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                result['title'],
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                result['overview'],
+                                maxLines: 4,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              } else {
+                return const SizedBox(
+                  width: 0,
+                  height: 0,
+                );
+              }
+            }).toList(),
+            SizedBox(height: 50.0),
           ],
         ),
       ),

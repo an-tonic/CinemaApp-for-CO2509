@@ -38,6 +38,8 @@ dependencies:
   http: ^1.2.0
   connectivity_plus: ^5.0.2
   shared_preferences: ^2.2.2
+  firebase_core: ^2.27.0
+  firebase_database: ^10.4.9
 
 dev_dependencies:
   flutter_test:

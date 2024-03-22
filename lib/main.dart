@@ -1,9 +1,15 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import  'home_page.dart';
 import 'search_page.dart';
+import 'favourites_page.dart';
 
 void main() {
-  runApp(MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  Firebase.initializeApp().then((value) {
+    runApp(MyApp());
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -27,11 +33,18 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   int _selectedIndex = 1;
 
+  @override
+  void initState() {
+    super.initState();
+  }
+
   final List<Widget> _pages = [
     HomePage(), // Example content for the Home Page
     SearchPage(), // Example content for the Search Page
-    Placeholder(), // Example content for the Favorites Page
+    FavPage(), // Example content for the Favorites Page
   ];
+
+
 
   void _onItemTapped(int index) {
     setState(() {
@@ -73,6 +86,7 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
               child: BottomNavigationBar(
                 backgroundColor: Colors.transparent,
+
                 iconSize: 30,
                 items: const <BottomNavigationBarItem>[
                   BottomNavigationBarItem(
@@ -101,3 +115,4 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
+
