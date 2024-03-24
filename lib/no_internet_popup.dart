@@ -35,12 +35,14 @@ Future<Map<String, dynamic>> getURL(String url, BuildContext context) async {
 
     throw Exception('Failed to connect to the internet');
   } else {
+
     http.Response response = await http.get(Uri.parse(url), headers: {
       'Authorization': 'Bearer $token',
       'accept': 'application/json',
     });
 
     if (response.statusCode == 200) {
+
       return jsonDecode(response.body);
 
     } else {

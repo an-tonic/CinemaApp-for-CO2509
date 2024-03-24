@@ -1,9 +1,12 @@
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'no_internet_popup.dart';
 
 class SearchPage extends StatefulWidget {
-  const SearchPage({Key? key}) : super(key: key);
+  final DatabaseReference db;
+
+  const SearchPage({Key? key, required this.db}) : super(key: key);
 
   @override
   _SearchPageState createState() => _SearchPageState();
@@ -41,6 +44,10 @@ class _SearchPageState extends State<SearchPage> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _submit(int movieID) {
+    widget.db.child('favorite_movie_id').child(movieID.toString()).set('');
   }
 
   void searchMovies() async {
@@ -204,52 +211,65 @@ class _SearchPageState extends State<SearchPage> {
                   margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   child: Padding(
                     padding: EdgeInsets.all(5),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Image
-                        Column(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                'https://image.tmdb.org/t/p/w92/${result['poster_path']}',
-                                fit: BoxFit.cover,
-                                width: 70,
-                                height: 100,
-                              ),
-                            ),
-                            Text(result['release_date']),
-                          ],
-                        ),
-                        const SizedBox(width: 10),
-                        // Title and Overview
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Stack( children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Image
+                          Column(
                             children: [
-                              Text(
-                                result['title'],
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  'https://image.tmdb.org/t/p/w92/${result['poster_path']}',
+                                  fit: BoxFit.cover,
+                                  width: 70,
+                                  height: 100,
                                 ),
                               ),
-                              const SizedBox(height: 5),
-                              Text(
-                                result['overview'],
-                                maxLines: 4,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey,
-                                ),
-                              ),
+                              Text(result['release_date']),
                             ],
                           ),
+                          const SizedBox(width: 10),
+                          // Title and Overview
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  result['title'],
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 5),
+                                Text(
+                                  result['overview'],
+                                  maxLines: 4,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      Positioned(
+                        top: -10,
+                        right: -10,
+                        child: IconButton(
+                          iconSize: 30,
+                          icon: const Icon(Icons.bookmark),
+                          onPressed: () {
+                            _submit(result['id']);
+                          },
                         ),
-                      ],
-                    ),
+                      ),
+                    ]),
                   ),
                 );
               } else {

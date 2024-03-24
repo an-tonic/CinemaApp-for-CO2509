@@ -1,7 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
-import  'home_page.dart';
+import 'home_page.dart';
 import 'search_page.dart';
 import 'favourites_page.dart';
 
@@ -31,20 +31,16 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _selectedIndex = 1;
+  int _selectedIndex = 0;
+  late DatabaseReference _db;
+  final List<Widget> _pages = [];
+
 
   @override
   void initState() {
+    _db =  FirebaseDatabase.instance.ref();
     super.initState();
   }
-
-  final List<Widget> _pages = [
-    HomePage(), // Example content for the Home Page
-    SearchPage(), // Example content for the Search Page
-    FavPage(), // Example content for the Favorites Page
-  ];
-
-
 
   void _onItemTapped(int index) {
     setState(() {
@@ -54,6 +50,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    _pages.addAll([
+      HomePage(db: _db),
+      SearchPage(db: _db),
+      FavPage(db: _db),
+    ]);
+
     return Scaffold(
       //appBar: AppBar(
         //title: Text('My App'),

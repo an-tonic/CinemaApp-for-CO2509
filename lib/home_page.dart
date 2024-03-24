@@ -1,11 +1,13 @@
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'no_internet_popup.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final DatabaseReference db;
 
+  const HomePage({Key? key, required this.db}) : super(key: key);
+
+  
   @override
   _HomePageState createState() => _HomePageState();
 }
@@ -16,13 +18,11 @@ class _HomePageState extends State<HomePage> {
   final ScrollController _scrollController = ScrollController();
   Color? startColor;
   Color? endColor;
-  late DatabaseReference _db;
+
 
   @override
   initState() {
     super.initState();
-    _db = FirebaseDatabase.instance.ref();
-
     _fetchMoviesFuture = fetchMovies();
 
     _scrollController.addListener(() {
@@ -43,10 +43,8 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  void _submit() {
-    setState(() {
-      _db.child('favorite_movie_id').set('test');
-    });
+  void _submit(int movieID) {
+    widget.db.child('favorite_movie_id').child(movieID.toString()).set('');
   }
 
   Future<List> fetchMovies() async {
@@ -85,66 +83,7 @@ class _HomePageState extends State<HomePage> {
               ),
               itemCount: results.length,
               itemBuilder: (context, index) {
-                var result = results[index];
-                String posterPath = result['poster_path'];
-                String imageUrl = 'https://image.tmdb.org/t/p/w780/$posterPath';
-
-                return Padding(
-                  padding: const EdgeInsets.all(5.0),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: GridTile(
-                      footer: GridTileBar(
-                          backgroundColor: Colors.black45,
-                          title: SingleChildScrollView(
-                            scrollDirection: Axis.vertical,
-                            child: Text(
-                              result['overview'],
-                              maxLines: 100,
-                              style: TextStyle(fontSize: 17),
-                            ),
-                          )),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (BuildContext context, Widget child,
-                                ImageChunkEvent? loadingProgress) {
-                              if (loadingProgress == null) {
-                                // Image has finished loading, so return the child (the actual image)
-                                return child;
-                              } else {
-                                // Image is still loading, so return a CircularProgressIndicator
-                                return const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator());
-                              }
-                            },
-                          ),
-                          Positioned(
-                            top: 0,
-                            right: 0,
-                            child: IconButton(
-                              iconSize: 50,
-                              icon: Icon(Icons.bookmark),
-                              onPressed: () {
-                                _submit();
-                                // Add code here to push movie details to local storage
-                                // For example, you can use shared preferences to store the details
-                                // SharedPreferences.getInstance().then((prefs) {
-                                //   prefs.setString('movie_${result['id']}', jsonEncode(result));
-                                // });
-                              },
-                            ),
-                          )
-                        ],
-                      ),
-                    ),
-                  ),
-                );
+                return _buildGridItem(context, results[index], _submit);
               },
             );
           } else if (snapshot.hasError) {
@@ -156,4 +95,63 @@ class _HomePageState extends State<HomePage> {
       ),
     ));
   }
+}
+
+Widget _buildGridItem(BuildContext context, var result, void Function(int movieID) submit) {
+
+  String posterPath = result['poster_path'];
+  String imageUrl = 'https://image.tmdb.org/t/p/w780/$posterPath';
+
+  return Padding(
+    padding: const EdgeInsets.all(5.0),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: GridTile(
+        footer: GridTileBar(
+            backgroundColor: Colors.black45,
+            title: SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              child: Text(
+                result['overview'],
+                maxLines: 100,
+                style: const TextStyle(fontSize: 17),
+              ),
+            )),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              loadingBuilder: (BuildContext context, Widget child,
+                  ImageChunkEvent? loadingProgress) {
+                if (loadingProgress == null) {
+                  // Image has finished loading, so return the child (the actual image)
+                  return child;
+                } else {
+                  // Image is still loading, so return a CircularProgressIndicator
+                  return const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator());
+                }
+              },
+            ),
+            Positioned(
+              top: 0,
+              right: 0,
+              child: IconButton(
+                iconSize: 50,
+                icon: const Icon(Icons.bookmark),
+                onPressed: () {
+                  submit(result['id']);
+                },
+              ),
+            )
+          ],
+        ),
+      ),
+    ),
+  );
+
 }
