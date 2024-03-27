@@ -1,157 +1,106 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
-import 'no_internet_popup.dart';
+import 'feed_page.dart';
+import 'search_page.dart';
+import 'favourites_page.dart';
+
 
 class HomePage extends StatefulWidget {
-  final DatabaseReference db;
+  const HomePage({super.key});
 
-  const HomePage({Key? key, required this.db}) : super(key: key);
-
-  
   @override
-  _HomePageState createState() => _HomePageState();
+  _MyHomePageState createState() => _MyHomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  late Future<List<dynamic>> _fetchMoviesFuture;
-  double _scrollPosition = 0.0;
-  final ScrollController _scrollController = ScrollController();
-  Color? startColor;
-  Color? endColor;
+class _MyHomePageState extends State<HomePage> {
+  int _selectedIndex = 0;
+  late DatabaseReference _db;
+  final List<Widget> _pages = [];
 
 
   @override
-  initState() {
+  void initState() {
+    _db =  FirebaseDatabase.instance.ref();
     super.initState();
-    _fetchMoviesFuture = fetchMovies();
+  }
 
-    _scrollController.addListener(() {
-      setState(() {
-        double maxScrollExtent = _scrollController.position.maxScrollExtent;
-        _scrollPosition = _scrollController.offset;
-        startColor = Color.lerp(Colors.blue.shade900, Colors.red.shade900,
-            _scrollPosition / maxScrollExtent);
-        endColor = Color.lerp(Colors.red.shade900, Colors.blue.shade900,
-            _scrollPosition / maxScrollExtent);
-      });
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
     });
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
+  Future<void> _submit(int movieID) async {
+    var uid = FirebaseAuth.instance.currentUser?.uid;
 
-  void _submit(int movieID) {
-    widget.db.child('favorite_movie_id').child(movieID.toString()).set('');
-  }
-
-  Future<List> fetchMovies() async {
-    String url =
-        'https://api.themoviedb.org/3/discover/movie?include_adult=false&include_video=false&language=en-US&page=1&sort_by=popularity.desc';
-    Map<String, dynamic> discoverResponse = await getURL(url, context);
-
-    return discoverResponse['results'];
+    _db.child('favorite_movie_id').child(uid!).child(movieID.toString()).set('');
   }
 
   @override
   Widget build(BuildContext context) {
+    _pages.addAll([
+      FeedPage(_submit),
+      SearchPage(_submit),
+      FavPage(_db),
+    ]);
+
     return Scaffold(
-        body: Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            startColor ?? Colors.blue.shade900,
-            endColor ?? Colors.red.shade900,
-          ],
-        ),
-      ),
-      child: FutureBuilder<List<dynamic>>(
-        future: _fetchMoviesFuture,
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            List<dynamic> results = snapshot.data!;
-            return GridView.builder(
-              controller: _scrollController,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 1,
-                mainAxisSpacing: 100,
-                childAspectRatio: 0.7,
+      body: Stack(
+        children: [
+          // Page content
+          Positioned.fill(
+            child: _pages[_selectedIndex],
+          ),
+          // Bottom navigation bar
+          Positioned(
+
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+
+              decoration: BoxDecoration(
+
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.blue.withOpacity(0),
+                    //Colors.blue.withOpacity(0.5),// Adjust opacity as needed
+                    Colors.blue.withOpacity(1), // Adjust opacity as needed
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
               ),
-              itemCount: results.length,
-              itemBuilder: (context, index) {
-                return _buildGridItem(context, results[index], _submit);
-              },
-            );
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else {
-            return const Center(child: CircularProgressIndicator());
-          }
-        },
+              child: BottomNavigationBar(
+                backgroundColor: Colors.transparent,
+
+                iconSize: 30,
+                items: const <BottomNavigationBarItem>[
+                  BottomNavigationBarItem(
+                    backgroundColor: Colors.transparent,
+                    icon: Icon(Icons.home),
+                    label: '',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.search),
+                    label: '',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.bookmarks),
+                    label: '',
+                  ),
+                ],
+                currentIndex: _selectedIndex,
+                selectedItemColor: Colors.white70,
+                unselectedItemColor: Colors.white30,
+                onTap: _onItemTapped,
+              ),
+            ),
+          ),
+        ],
       ),
-    ));
+    );
   }
 }
 
-Widget _buildGridItem(BuildContext context, var result, void Function(int movieID) submit) {
-
-  String posterPath = result['poster_path'];
-  String imageUrl = 'https://image.tmdb.org/t/p/w780/$posterPath';
-
-  return Padding(
-    padding: const EdgeInsets.all(5.0),
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: GridTile(
-        footer: GridTileBar(
-            backgroundColor: Colors.black45,
-            title: SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              child: Text(
-                result['overview'],
-                maxLines: 100,
-                style: const TextStyle(fontSize: 17),
-              ),
-            )),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.network(
-              imageUrl,
-              fit: BoxFit.cover,
-              loadingBuilder: (BuildContext context, Widget child,
-                  ImageChunkEvent? loadingProgress) {
-                if (loadingProgress == null) {
-                  // Image has finished loading, so return the child (the actual image)
-                  return child;
-                } else {
-                  // Image is still loading, so return a CircularProgressIndicator
-                  return const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator());
-                }
-              },
-            ),
-            Positioned(
-              top: 0,
-              right: 0,
-              child: IconButton(
-                iconSize: 50,
-                icon: const Icon(Icons.bookmark),
-                onPressed: () {
-                  submit(result['id']);
-                },
-              ),
-            )
-          ],
-        ),
-      ),
-    ),
-  );
-
-}

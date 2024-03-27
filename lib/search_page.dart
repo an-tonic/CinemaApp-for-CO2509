@@ -1,53 +1,50 @@
-import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'no_internet_popup.dart';
+import 'util_cinema.dart';
 
 class SearchPage extends StatefulWidget {
-  final DatabaseReference db;
+  final void Function(int movieID) pushFavMovFirebase;
 
-  const SearchPage({Key? key, required this.db}) : super(key: key);
+  const SearchPage(this.pushFavMovFirebase, {Key? key}) : super(key: key);
 
   @override
   _SearchPageState createState() => _SearchPageState();
 }
 
-class _SearchPageState extends State<SearchPage> {
-  double _scrollPosition = 0.0;
-  final ScrollController _scrollController = ScrollController();
-  Color? startColor;
-  Color? endColor;
+class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
   String selectedGenre = "";
   String selectedYear = "";
   String searchQuery = "";
+
   List<dynamic> _genres = [];
+  final List<dynamic> _sortOptions = [
+    'Default', //TODO: implement return to default
+    'Alphabetically',
+    'Popularity',
+    'Release Date',
+    'Rating'
+  ];
   List<dynamic> searchResults = [];
+  late AnimationController _colorAnimationController;
+  late Animation _colorTween;
+  int count = 0;
 
   @override
   void initState() {
-    super.initState();
+    _colorAnimationController =
+        AnimationController(vsync: this, duration: Duration(seconds: 0));
+    _colorTween =
+        ColorTween(begin: Colors.blue.shade900, end: Colors.red.shade900)
+            .animate(_colorAnimationController);
 
     _loadGenres();
-    _scrollController.addListener(() {
-      setState(() {
-        double maxScrollExtent = _scrollController.position.maxScrollExtent;
-        _scrollPosition = _scrollController.offset;
-        startColor = Color.lerp(Colors.blue.shade900, Colors.red.shade900,
-            _scrollPosition / maxScrollExtent);
-        endColor = Color.lerp(Colors.red.shade900, Colors.blue.shade900,
-            _scrollPosition / maxScrollExtent);
-      });
-    });
+    super.initState();
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _colorAnimationController.dispose();
     super.dispose();
-  }
-
-  void _submit(int movieID) {
-    widget.db.child('favorite_movie_id').child(movieID.toString()).set('');
   }
 
   void searchMovies() async {
@@ -70,218 +67,310 @@ class _SearchPageState extends State<SearchPage> {
     });
   }
 
+  void sortMovies(String sortOption) {
+    switch (sortOption) {
+      case 'Alphabetically':
+        searchResults.sort((a, b) => a['title'].compareTo(b['title']));
+        break;
+      case 'Popularity':
+        searchResults
+            .sort((a, b) => b['popularity'].compareTo(a['popularity']));
+        break;
+      case 'Release Date':
+        searchResults
+            .sort((a, b) => b['release_date'].compareTo(a['release_date']));
+        break;
+      case 'Rating':
+        searchResults
+            .sort((a, b) => b['vote_average'].compareTo(a['vote_average']));
+        break;
+      case 'Default':
+        break;
+    }
+  }
+
+  bool _scrollListener(ScrollNotification scrollInfo) {
+    if (scrollInfo.metrics.maxScrollExtent == 0) {
+      return true;
+    }
+    _colorAnimationController.animateTo(
+        scrollInfo.metrics.pixels / scrollInfo.metrics.maxScrollExtent);
+
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              startColor ?? Colors.blue.shade900,
-              endColor ?? Colors.red.shade900,
-            ],
+      body: AnimatedBuilder(
+        animation: _colorAnimationController,
+        builder: (context, child) => Stack(children: [
+          Container(
+            color: _colorTween.value,
           ),
-        ),
-        child: ListView(
-          controller: _scrollController,
-          children: [
-            // Search Bar
-            Container(
-              margin: EdgeInsets.all(10.0),
-              padding: EdgeInsets.symmetric(horizontal: 16.0),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(30.0),
-                color: Colors.white.withOpacity(0.5),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.search),
-                  SizedBox(width: 10.0),
-                  Expanded(
-                    child: TextField(
+          NotificationListener<ScrollNotification>(
+            onNotification: _scrollListener,
+            child: ListView(
+              padding: const EdgeInsets.only(top: 130.0, bottom: 70.0),
+              children: [
+                ...searchResults.map((result) {
+                  if (selectedGenre == "" ||
+                      result['genre_ids'].contains(int.parse(selectedGenre))) {
+                    return MovieCard(widget: widget, movieData: result);
+                  } else {
+                    return const SizedBox();
+                  }
+                }).toList(),
+              ],
+            ),
+          ),
+          Container(
+            decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: [0.0, 0.3, 0.8, 1.0], // Adjust the stop values as needed
+                  colors: [
+                    Colors.transparent,
+                    Colors.black38,
+                    Colors.black38,
+                    Colors.transparent,
+                  ],
+                )
+            ),
+            padding: EdgeInsets.fromLTRB(10, 30, 10, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: SearchBar(
+                      leading: Icon(Icons.search),
+                      hintText: 'Search',
+                      elevation: MaterialStateProperty.all(0.0),
+                      padding: MaterialStateProperty.all(
+                          EdgeInsets.symmetric(horizontal: 20.0)),
+                      backgroundColor: MaterialStateProperty.all(
+                          Colors.white54.withOpacity(0.5)),
+                      constraints: const BoxConstraints(
+                        minHeight: 40.0,
+                        maxHeight: 40.0,
+                      ),
                       onChanged: (String newValue) {
                         setState(() {
                           searchQuery = newValue;
                           searchMovies();
                         });
-                      },
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        hintText: 'Search',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.only(bottom: 20.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Container(
-                    margin: EdgeInsets.only(right: 10.0, left: 10.0),
-                    padding: EdgeInsets.symmetric(horizontal: 16.0),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30.0),
-                      color: Colors.white.withOpacity(0.5),
-                    ),
-                    height: 40,
-                    child: Row(
-                      children: [
-                        Icon(Icons.calendar_today),
-                        SizedBox(width: 5.0),
-                        SizedBox(
-                          width: MediaQuery.of(context).size.width * 0.12,
-                          child: TextField(
-                            onChanged: (String newValue) {
-                              if (newValue.length == 4) {
-                                setState(() {
-                                  selectedYear = newValue;
-                                });
-                                searchMovies();
-                              }
-                            },
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly
-                            ],
-                            keyboardType: TextInputType.number,
-                            maxLength: 4,
-                            decoration: InputDecoration(
-                              hintText: 'Year',
-                              hintStyle: TextStyle(
-                                  color: Colors.white.withOpacity(0.5)),
-                              border: InputBorder.none,
-                              counterText: '',
-                              contentPadding:
-                                  EdgeInsets.symmetric(vertical: 11.0),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    margin: EdgeInsets.only(right: 10.0),
-                    padding: EdgeInsets.symmetric(horizontal: 16.0),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30.0),
-                      color: Colors.white.withOpacity(0.5),
-                    ),
-                    child: DropdownMenu<String>(
-                      menuStyle: MenuStyle(
-                        visualDensity: VisualDensity.compact,
-                        padding: MaterialStateProperty.resolveWith(
-                            (states) => EdgeInsets.all(0)),
-                      ),
-                      inputDecorationTheme: const InputDecorationTheme(
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.all(10),
-                        constraints: BoxConstraints(
-                          maxHeight: 40,
-                        ),
-                      ),
-                      menuHeight: 400,
-                      hintText: "Genre",
-                      onSelected: (String? value) {
-                        setState(() {
-                          selectedGenre = value!;
-                        });
-                      },
-                      dropdownMenuEntries: _genres
-                          .map<DropdownMenuEntry<String>>((dynamic genre) {
-                        return DropdownMenuEntry<String>(
-                          value: genre['id'].toString(),
-                          label: genre['name'],
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ...searchResults.map((result) {
-              if (selectedGenre == "" ||
-                  result['genre_ids'].contains(int.parse(selectedGenre))) {
-                return Card(
-                  color: Colors.red.withOpacity(0.3),
-                  margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  child: Padding(
-                    padding: EdgeInsets.all(5),
-                    child: Stack( children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      }),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 8.0, right: 8.0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(30.0),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
                         children: [
-                          // Image
-                          Column(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  'https://image.tmdb.org/t/p/w92/${result['poster_path']}',
-                                  fit: BoxFit.cover,
-                                  width: 70,
-                                  height: 100,
-                                ),
-                              ),
-                              Text(result['release_date']),
-                            ],
-                          ),
-                          const SizedBox(width: 10),
-                          // Title and Overview
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          Container(
+                            margin:
+                                const EdgeInsets.only(right: 10.0, left: 0.0),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 16.0),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(30.0),
+                              color: Colors.white.withOpacity(0.5),
+                            ),
+                            height: 40,
+                            child: Row(
                               children: [
-                                Text(
-                                  result['title'],
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 5),
-                                Text(
-                                  result['overview'],
-                                  maxLines: 4,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey,
+                                Icon(Icons.calendar_today),
+                                SizedBox(width: 5.0),
+                                SizedBox(
+                                  width:
+                                      MediaQuery.of(context).size.width * 0.12,
+                                  child: TextField(
+                                    onChanged: (String newValue) {
+                                      if (newValue.length == 4) {
+                                        setState(() {
+                                          selectedYear = newValue;
+                                        });
+                                        searchMovies();
+                                      }
+                                    },
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly
+                                    ],
+                                    keyboardType: TextInputType.number,
+                                    maxLength: 4,
+                                    decoration: const InputDecoration(
+                                      hintText: 'Year',
+                                      border: InputBorder.none,
+                                      counterText: '',
+                                      contentPadding:
+                                          EdgeInsets.symmetric(vertical: 11.0),
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
+                          Container(
+                            margin: EdgeInsets.only(right: 10.0),
+                            // padding: EdgeInsets.symmetric(horizontal: 16.0),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(30.0),
+                              color: Colors.white.withOpacity(0.5),
+                            ),
+                            child: DropdownMenu<String>(
+                              menuStyle: MenuStyle(
+                                visualDensity: VisualDensity.compact,
+                                padding: MaterialStateProperty.all(
+                                    EdgeInsets.all(0)),
+                              ),
+                              inputDecorationTheme: const InputDecorationTheme(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.all(10),
+                                constraints: BoxConstraints(
+                                  maxHeight: 40,
+                                ),
+                              ),
+                              menuHeight: 400,
+                              hintText: "Genre",
+                              onSelected: (String? value) {
+                                setState(() {
+                                  selectedGenre = value!;
+                                });
+                              },
+                              dropdownMenuEntries: _genres
+                                  .map<DropdownMenuEntry<String>>(
+                                      (dynamic genre) {
+                                return DropdownMenuEntry<String>(
+                                  value: genre['id'].toString(),
+                                  label: genre['name'],
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                          Container(
+                            margin: EdgeInsets.only(right: 10.0),
+                            // padding: EdgeInsets.symmetric(horizontal: 16.0),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(30.0),
+                              color: Colors.white.withOpacity(0.5),
+                            ),
+                            child: DropdownMenu<String>(
+                              menuStyle: MenuStyle(
+                                visualDensity: VisualDensity.compact,
+                                padding: MaterialStateProperty.all(
+                                    EdgeInsets.all(0)),
+                              ),
+                              inputDecorationTheme: const InputDecorationTheme(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.all(10),
+                                constraints: BoxConstraints(
+                                  maxHeight: 40,
+                                ),
+                              ),
+                              menuHeight: 400,
+                              hintText: "Sort by",
+                              onSelected: (String? value) {
+                                setState(() {
+                                  sortMovies(value!);
+                                });
+                              },
+                              dropdownMenuEntries: _sortOptions
+                                  .map<DropdownMenuEntry<String>>(
+                                      (dynamic option) {
+                                return DropdownMenuEntry<String>(
+                                  value: option,
+                                  label: option,
+                                );
+                              }).toList(),
+                            ),
+                          ),
                         ],
                       ),
-                      Positioned(
-                        top: -10,
-                        right: -10,
-                        child: IconButton(
-                          iconSize: 30,
-                          icon: const Icon(Icons.bookmark),
-                          onPressed: () {
-                            _submit(result['id']);
-                          },
-                        ),
-                      ),
-                    ]),
+                    ),
                   ),
-                );
-              } else {
-                return const SizedBox(
-                  width: 0,
-                  height: 0,
-                );
-              }
-            }).toList(),
-            SizedBox(height: 50.0),
-          ],
-        ),
+                ),
+              ],
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+class MovieCard extends StatelessWidget {
+  const MovieCard({
+    super.key,
+    required this.widget,
+    required this.movieData
+  });
+
+  final dynamic movieData;
+  final SearchPage widget;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Colors.red.withOpacity(0.3),
+      margin: const EdgeInsets.symmetric(
+          horizontal: 10, vertical: 5),
+      child: Padding(
+        padding: const EdgeInsets.all(5),
+        child: Stack(children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Column(
+                children: [
+                  RoundNetImage(movieData['poster_path']),
+                  Text(movieData['release_date']),
+                ],
+              ),
+              const SizedBox(width: 10),
+              // Title and Overview
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      movieData['title'],
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      movieData['overview'],
+                      maxLines: 4,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          Positioned(
+            top: -10,
+            right: -10,
+            child: IconButton(
+              iconSize: 30,
+              icon: const Icon(Icons.bookmark),
+              onPressed: () {
+                widget.pushFavMovFirebase(movieData['id']);
+              },
+            ),
+          ),
+        ]),
       ),
     );
   }
