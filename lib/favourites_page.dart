@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'util_cinema.dart';
 
 class FavPage extends StatefulWidget {
@@ -20,7 +21,8 @@ class _FavPageState extends State<FavPage> with TickerProviderStateMixin {
   late Animation _colorTween;
   late String uid;
   int crossAxisCountUser = 2;
-  double previousScale = 1.0;
+  double previousScale = 0.0;
+  late SharedPreferences _prefs;
 
   @override
   initState() {
@@ -32,14 +34,26 @@ class _FavPageState extends State<FavPage> with TickerProviderStateMixin {
             .animate(_colorAnimationController);
 
     fetchFavoriteMovies();
-
+    _initPrefs();
     super.initState();
   }
 
   @override
   void dispose() {
     _colorAnimationController.dispose();
+    _savePrefs();
     super.dispose();
+  }
+
+  Future<void> _initPrefs() async {
+    _prefs = await SharedPreferences.getInstance();
+    setState(() {
+      crossAxisCountUser = _prefs.getInt('crossAxisCountUser') ?? 2;
+    });
+  }
+
+  Future<void> _savePrefs() async {
+    await _prefs.setInt('crossAxisCountUser', crossAxisCountUser);
   }
 
   void _submit(int movieID) {
@@ -66,15 +80,16 @@ class _FavPageState extends State<FavPage> with TickerProviderStateMixin {
 
     List favoriteMovies = [];
 
-    // Fetch details for each favorite movie ID
     for (String id in movieIds) {
       String url = 'https://api.themoviedb.org/3/movie/$id';
-      Map<String, dynamic> movieResponse = await getURL(url, context);
+
+      Map<String, dynamic> movieResponse = await getURL(url);
 
       if (movieResponse.containsKey('id')) {
         favoriteMovies.add(movieResponse);
       }
     }
+
     setState(() {
       _favoriteMovies = favoriteMovies;
     });
@@ -88,39 +103,55 @@ class _FavPageState extends State<FavPage> with TickerProviderStateMixin {
         scrollInfo.metrics.pixels / scrollInfo.metrics.maxScrollExtent);
     return false;
   }
+  bool stopScale = false;
 
   void _onScaleUpdate(double scale) {
-    // Execute the scale update logic after the debounce duration
-    double averageScale = (scale + previousScale) / 2;
-    if (averageScale > previousScale && crossAxisCountUser > 2) {
-      // Scale up, decrease crossAxisCount
-      crossAxisCountUser--;
+
+    if(scale == 1.0 || stopScale){
+      return;
     }
-    if (averageScale < previousScale && crossAxisCountUser < 5) {
-      // Scale down, increase crossAxisCount
-      crossAxisCountUser++;
+
+    if (previousScale != 0) {
+      if (scale > previousScale && crossAxisCountUser > 2) {
+        setState(() {
+          stopScale = true;
+          crossAxisCountUser--;
+        });
+      } else if (scale < previousScale && crossAxisCountUser < 5) {
+        setState(() {
+          stopScale = true;
+          crossAxisCountUser++;
+        });
+      }
     }
+
     previousScale = scale;
-    setState(() {});
+
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onScaleUpdate: (details) {
-        _onScaleUpdate(details.scale);
-      },
-      child: Scaffold(
-        body: NotificationListener<ScrollNotification>(
-          onNotification: _scrollListener,
-          child: AnimatedBuilder(
-            animation: _colorAnimationController,
-            builder: (context, child) => Stack(
-              children: [
-                Container(
-                  color: _colorTween.value,
-                ),
-                GridView.builder(
+    return Scaffold(
+      body: NotificationListener<ScrollNotification>(
+        onNotification: _scrollListener,
+        child: AnimatedBuilder(
+          animation: _colorAnimationController,
+          builder: (context, child) => Stack(
+            children: [
+              Container(
+                color: _colorTween.value,
+              ),
+              GestureDetector(
+                onScaleUpdate: (details) {
+                  _onScaleUpdate(details.scale);
+                },
+                onScaleEnd: (details){
+                  stopScale = false;
+
+                  previousScale = 0;
+                },
+                // onScaleEnd: (details) => previousScale = 0,
+                child: GridView.builder(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCountUser,
                     mainAxisSpacing: 0,
@@ -131,9 +162,9 @@ class _FavPageState extends State<FavPage> with TickerProviderStateMixin {
                     return _buildGridItem(
                         context, _favoriteMovies[index], _submit);
                   },
-                )
-              ],
-            ),
+                ),
+              )
+            ],
           ),
         ),
       ),

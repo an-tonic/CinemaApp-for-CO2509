@@ -4,13 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-void showPopup(BuildContext context, {String message = 'empty'}) {
+import 'main.dart';
+
+void showPopup({String message = 'empty'}) {
   showDialog(
-    context: context,
+    context: navigatorKey.currentContext!,
     builder: (BuildContext context) {
       return AlertDialog(
         title: Text(message),
-        content: Text(''),
         actions: [
           TextButton(
             onPressed: () {
@@ -25,46 +26,49 @@ void showPopup(BuildContext context, {String message = 'empty'}) {
   );
 }
 
-void handleCinemaAppError(BuildContext context, String errorCode) {
+void handleCinemaAppError(String errorCode) {
   switch (errorCode) {
-    case 'channel-error':
-      showPopup(context, message: 'No internet connection.');
-      break;
-    case 'no-internet':
-      showPopup(context, message: 'No internet connection.');
+    case 'channel-error' || 'network-request-failed':
+      showPopup(message: 'No internet connection.');
       break;
     case 'invalid-email':
-      showPopup(context, message: 'Bad email format.');
+      showPopup(message: 'Bad email format.');
       break;
     case 'weak-password':
-      showPopup(context, message: 'Weak password: 6 chars min.');
+      showPopup(message: 'Weak password: 6 chars min.');
+      break;
+    case 'too-many-requests':
+      showPopup(message: 'Too many login attempts. Try later.');
+      break;
+    case 'invalid-credential':
+      showPopup(message: 'Either email or password are incorrect. Try again.');
       break;
     case 'user-not-found':
-      showPopup(context, message: 'User not found: register to continue.');
+      showPopup(message: 'User not found: register to continue.');
       break;
     case 'wrong-password':
-      showPopup(context, message: 'Wrong password. Try again.');
+      showPopup(message: 'Wrong password. Try again.');
       break;
     case 'email-already-in-use':
-      showPopup(context, message: 'Email already in use. Try a different one.');
+      showPopup(message: 'Email already in use. Try a different one.');
       break;
     case 'empty-fields':
-      showPopup(context, message: 'You must enter both email and password.');
+      showPopup(message: 'You must enter both email and password.');
     default:
       if (kDebugMode) {
-        print("Unknown error code");
+        print("Unknown error code: $errorCode");
       }
       break;
   }
 }
 
-Future<Map<String, dynamic>> getURL(String url, BuildContext context) async {
+Future<Map<String, dynamic>> getURL(String url) async {
   String token =
       "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJkYWMyNmI5ZTE4ZWI1NGRhZTBlYTBiMGY1YjFhZTY3ZSIsInN1YiI6IjY1ZjdmMTkwZTIxMDIzMDE3ZWVmYjgwMSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.5tUBCoCnS8XTDkXhOXgzPkjcb8Etkzb1ZvEfSUD6_Ws";
   try {
     final connectivityResult = await Connectivity().checkConnectivity();
     if (connectivityResult == ConnectivityResult.none) {
-      throw const FormatException('no-internet');
+      throw const FormatException('network-request-failed');
     }
     http.Response response = await http.get(Uri.parse(url), headers: {
       'Authorization': 'Bearer $token',
@@ -77,7 +81,7 @@ Future<Map<String, dynamic>> getURL(String url, BuildContext context) async {
       throw const FormatException('server-error');
     }
   } on FormatException catch (e) {
-    handleCinemaAppError(context, e.message);
+    handleCinemaAppError(e.message);
   }
 
   throw Exception();

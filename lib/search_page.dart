@@ -15,8 +15,8 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
   String selectedGenre = "";
   String selectedYear = "";
   String searchQuery = "";
+  late Future<List<dynamic>> _fetchGenresFuture;
 
-  List<dynamic> _genres = [];
   final List<dynamic> _sortOptions = [
     'Default', //TODO: implement return to default
     'Alphabetically',
@@ -37,7 +37,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
         ColorTween(begin: Colors.blue.shade900, end: Colors.red.shade900)
             .animate(_colorAnimationController);
 
-    _loadGenres();
+    _fetchGenresFuture = _loadGenres();
     super.initState();
   }
 
@@ -51,20 +51,18 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
     String url =
         'https://api.themoviedb.org/3/search/movie?query=$searchQuery&include_adult=false&language=en-US&primary_release_year=$selectedYear&page=1';
 
-    Map<String, dynamic> searchResponse = await getURL(url, context);
+    Map<String, dynamic> searchResponse = await getURL(url);
 
     setState(() {
       searchResults = searchResponse['results'];
     });
   }
 
-  void _loadGenres() async {
+  Future<List> _loadGenres() async {
     String url = 'https://api.themoviedb.org/3/genre/movie/list?language=en';
-    Map<String, dynamic> genresResponse = await getURL(url, context);
+    Map<String, dynamic> genresResponse = await getURL(url);
 
-    setState(() {
-      _genres = genresResponse['genres'];
-    });
+    return genresResponse['genres'];
   }
 
   void sortMovies(String sortOption) {
@@ -127,17 +125,17 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
           Container(
             decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: [0.0, 0.3, 0.8, 1.0], // Adjust the stop values as needed
-                  colors: [
-                    Colors.transparent,
-                    Colors.black38,
-                    Colors.black38,
-                    Colors.transparent,
-                  ],
-                )
-            ),
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: [0.0, 0.3, 0.8, 1.0],
+              // Adjust the stop values as needed
+              colors: [
+                Colors.transparent,
+                Colors.black38,
+                Colors.black38,
+                Colors.transparent,
+              ],
+            )),
             padding: EdgeInsets.fromLTRB(10, 30, 10, 10),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -222,34 +220,45 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
                               borderRadius: BorderRadius.circular(30.0),
                               color: Colors.white.withOpacity(0.5),
                             ),
-                            child: DropdownMenu<String>(
-                              menuStyle: MenuStyle(
-                                visualDensity: VisualDensity.compact,
-                                padding: MaterialStateProperty.all(
-                                    EdgeInsets.all(0)),
-                              ),
-                              inputDecorationTheme: const InputDecorationTheme(
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.all(10),
-                                constraints: BoxConstraints(
-                                  maxHeight: 40,
-                                ),
-                              ),
-                              menuHeight: 400,
-                              hintText: "Genre",
-                              onSelected: (String? value) {
-                                setState(() {
-                                  selectedGenre = value!;
-                                });
+                            child: FutureBuilder(
+                              future: _fetchGenresFuture,
+                              builder: (context, snapshot) {
+                                if (snapshot.hasData) {
+                                  List<dynamic> onlineGenres = snapshot.data!;
+                                  return DropdownMenu<String>(
+                                    menuStyle: MenuStyle(
+                                      visualDensity: VisualDensity.compact,
+                                      padding: MaterialStateProperty.all(
+                                          EdgeInsets.all(0)),
+                                    ),
+                                    inputDecorationTheme:
+                                        const InputDecorationTheme(
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.all(10),
+                                      constraints: BoxConstraints(
+                                        maxHeight: 40,
+                                      ),
+                                    ),
+                                    menuHeight: 400,
+                                    hintText: "Genre",
+                                    onSelected: (String? value) {
+                                      setState(() {
+                                        selectedGenre = value!;
+                                      });
+                                    },
+                                    dropdownMenuEntries: onlineGenres
+                                        .map<DropdownMenuEntry<String>>(
+                                            (dynamic genre) {
+                                      return DropdownMenuEntry<String>(
+                                        value: genre['id'].toString(),
+                                        label: genre['name'],
+                                      );
+                                    }).toList(),
+                                  );
+                                } else {
+                                  return const CircularProgressIndicator();
+                                }
                               },
-                              dropdownMenuEntries: _genres
-                                  .map<DropdownMenuEntry<String>>(
-                                      (dynamic genre) {
-                                return DropdownMenuEntry<String>(
-                                  value: genre['id'].toString(),
-                                  label: genre['name'],
-                                );
-                              }).toList(),
                             ),
                           ),
                           Container(
@@ -304,11 +313,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
 }
 
 class MovieCard extends StatelessWidget {
-  const MovieCard({
-    super.key,
-    required this.widget,
-    required this.movieData
-  });
+  const MovieCard({super.key, required this.widget, required this.movieData});
 
   final dynamic movieData;
   final SearchPage widget;
@@ -317,8 +322,7 @@ class MovieCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       color: Colors.red.withOpacity(0.3),
-      margin: const EdgeInsets.symmetric(
-          horizontal: 10, vertical: 5),
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       child: Padding(
         padding: const EdgeInsets.all(5),
         child: Stack(children: [

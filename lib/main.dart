@@ -4,6 +4,8 @@ import 'login_page.dart';
 import 'registration_page.dart';
 import 'home_page.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   Firebase.initializeApp().then((value) {
@@ -15,11 +17,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      initialRoute: '/home',
+      navigatorKey: navigatorKey,
+      initialRoute: '/',
       routes: {
         '/': (context) => LoginPage(),
         '/register': (context) => RegistrationPage(),
-        '/home': (context) => HomePage(),
+        '/home': (context) => const HomePage(),
       },
     );
   }

@@ -44,7 +44,7 @@ class _FeedPageState extends State<FeedPage> with TickerProviderStateMixin {
   Future<List> fetchMovies() async {
     String url =
         'https://api.themoviedb.org/3/discover/movie?include_adult=false&include_video=false&language=en-US&page=1&sort_by=popularity.desc';
-    Map<String, dynamic> discoverResponse = await getURL(url, context);
+    Map<String, dynamic> discoverResponse = await getURL(url);
 
     return discoverResponse['results'];
   }
