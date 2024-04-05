@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'util_cinema.dart';
 
 class FeedPage extends StatefulWidget {
-  final void Function(int movieID) pushFavMovFirebase;
+  final void Function(int? movieID) pushFavMovFirebase;
 
   const FeedPage(this.pushFavMovFirebase, {Key? key}) : super(key: key);
 
   @override
-  _FeedPageState createState() => _FeedPageState();
+  FeedPageState createState() => FeedPageState();
 }
 
-class _FeedPageState extends State<FeedPage> with TickerProviderStateMixin {
+class FeedPageState extends State<FeedPage> with TickerProviderStateMixin {
   late Future<List<dynamic>> _fetchMoviesFuture;
   late AnimationController _colorAnimationController;
   late Animation _colorTween;
@@ -71,7 +71,7 @@ class _FeedPageState extends State<FeedPage> with TickerProviderStateMixin {
                   ),
                   itemCount: results.length,
                   itemBuilder: (context, index) {
-                    return _buildGridItem(
+                    return buildGridItem(
                         context, results[index], widget.pushFavMovFirebase);
                   },
                 ),
@@ -88,10 +88,12 @@ class _FeedPageState extends State<FeedPage> with TickerProviderStateMixin {
   }
 }
 
-Widget _buildGridItem(
-    BuildContext context, var result, void Function(int movieID) submit) {
-  String posterPath = result['poster_path'];
-  String imageUrl = 'https://image.tmdb.org/t/p/w780/$posterPath';
+Widget buildGridItem(
+    BuildContext context, var result, void Function(int? movieID) submit) {
+  String? posterPath = result['poster_path'];
+  String overviewText = result['overview'] ?? 'No overview';
+  int? movieIndex = (result['id'] is int && result['id'] >= 0) ? result['id'] : null;
+
 
   return Padding(
     padding: const EdgeInsets.all(5.0),
@@ -103,7 +105,7 @@ Widget _buildGridItem(
             title: SingleChildScrollView(
               scrollDirection: Axis.vertical,
               child: Text(
-                result['overview'],
+                overviewText,
                 maxLines: 100,
                 style: const TextStyle(fontSize: 17),
               ),
@@ -111,7 +113,7 @@ Widget _buildGridItem(
         child: Stack(
           fit: StackFit.expand,
           children: [
-            RoundNetImage(imageUrl),
+            RoundNetImage(posterPath, "780"),
             Positioned(
               top: 0,
               right: 0,
@@ -119,7 +121,8 @@ Widget _buildGridItem(
                 iconSize: 50,
                 icon: const Icon(Icons.bookmark),
                 onPressed: () {
-                  submit(result['id']);
+                  if (movieIndex == null) return;
+                  submit(movieIndex);
                 },
               ),
             )

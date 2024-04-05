@@ -31,10 +31,13 @@ class _MyHomePageState extends State<HomePage> {
     });
   }
 
-  Future<void> _submit(int movieID) async {
+  Future<void> _submit(int? movieID) async {
     var uid = FirebaseAuth.instance.currentUser?.uid;
 
-    _db.child('favorite_movie_id').child(uid!).child(movieID.toString()).set('');
+    // Perform action only if movieID is not null and uid is not null
+    if (movieID != null && uid != null) {
+      _db.child('favorite_movie_id').child(uid).child(movieID.toString()).set('');
+    }
   }
 
   @override

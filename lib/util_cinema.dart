@@ -26,7 +26,7 @@ void showPopup({String message = 'empty'}) {
   );
 }
 
-void handleCinemaAppError(String errorCode) {
+void handleCinemaAppError(String errorCode, Function showPopup) {
   switch (errorCode) {
     case 'channel-error' || 'network-request-failed':
       showPopup(message: 'No internet connection.');
@@ -81,7 +81,7 @@ Future<Map<String, dynamic>> getURL(String url) async {
       throw const FormatException('server-error');
     }
   } on FormatException catch (e) {
-    handleCinemaAppError(e.message);
+    handleCinemaAppError(e.message, showPopup);
   }
 
   throw Exception();
@@ -89,15 +89,16 @@ Future<Map<String, dynamic>> getURL(String url) async {
 
 class RoundNetImage extends StatelessWidget {
   final dynamic netPath;
-
-  const RoundNetImage(this.netPath, {Key? key}) : super(key: key);
+  final String imageSize;
+  const RoundNetImage(this.netPath, this.imageSize, {Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: Image.network(
-        'https://image.tmdb.org/t/p/w92/$netPath',
+        'https://image.tmdb.org/t/p/w${imageSize}/${netPath}',
         fit: BoxFit.fitWidth,
         errorBuilder: (context, error, stackTrace) {
           return const Icon(Icons.image_not_supported);

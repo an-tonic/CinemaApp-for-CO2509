@@ -20,8 +20,13 @@ class RegistrationPage extends StatelessWidget {
       );
       Navigator.pushReplacementNamed(context, '/home');
     } on FirebaseAuthException catch (e) {
-      handleCinemaAppError(e.code);
+      handleCinemaAppError(e.code, showPopup);
     }
+  }
+
+  void testFunction(){
+
+    print("Printing HEL from page");
   }
 
   @override

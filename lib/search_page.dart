@@ -8,10 +8,10 @@ class SearchPage extends StatefulWidget {
   const SearchPage(this.pushFavMovFirebase, {Key? key}) : super(key: key);
 
   @override
-  _SearchPageState createState() => _SearchPageState();
+  SearchPageState createState() => SearchPageState();
 }
 
-class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
+class SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
   String selectedGenre = "";
   String selectedYear = "";
   String searchQuery = "";
@@ -47,6 +47,7 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  @visibleForTesting
   void searchMovies() async {
     String url =
         'https://api.themoviedb.org/3/search/movie?query=$searchQuery&include_adult=false&language=en-US&primary_release_year=$selectedYear&page=1';
@@ -331,7 +332,7 @@ class MovieCard extends StatelessWidget {
             children: [
               Column(
                 children: [
-                  RoundNetImage(movieData['poster_path']),
+                  RoundNetImage(movieData['poster_path'], "92"),
                   Text(movieData['release_date']),
                 ],
               ),

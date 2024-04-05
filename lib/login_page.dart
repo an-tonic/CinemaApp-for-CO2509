@@ -20,7 +20,7 @@ class LoginPage extends StatelessWidget {
       );
       Navigator.pushReplacementNamed(context, '/home');
     } on FirebaseAuthException catch (e) {
-      handleCinemaAppError(e.code);
+      handleCinemaAppError(e.code, showPopup);
     }
   }
 

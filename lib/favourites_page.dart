@@ -28,7 +28,7 @@ class _FavPageState extends State<FavPage> with TickerProviderStateMixin {
   initState() {
     uid = FirebaseAuth.instance.currentUser!.uid;
     _colorAnimationController =
-        AnimationController(vsync: this, duration: Duration(seconds: 0));
+        AnimationController(vsync: this, duration: const Duration(seconds: 0));
     _colorTween =
         ColorTween(begin: Colors.blue.shade900, end: Colors.red.shade900)
             .animate(_colorAnimationController);
@@ -175,7 +175,6 @@ class _FavPageState extends State<FavPage> with TickerProviderStateMixin {
 Widget _buildGridItem(
     BuildContext context, var result, void Function(int movieID) submit) {
   dynamic posterPath = result['poster_path'];
-  String imageUrl = 'https://image.tmdb.org/t/p/w342/$posterPath';
 
   return Padding(
     padding: const EdgeInsets.all(5.0),
@@ -185,7 +184,7 @@ Widget _buildGridItem(
         child: Stack(
           fit: StackFit.expand,
           children: [
-            RoundNetImage(imageUrl),
+            RoundNetImage(posterPath, "342"),
             Positioned(
               top: 0,
               right: 0,
