@@ -103,11 +103,11 @@ class _FavPageState extends State<FavPage> with TickerProviderStateMixin {
         scrollInfo.metrics.pixels / scrollInfo.metrics.maxScrollExtent);
     return false;
   }
+
   bool stopScale = false;
 
   void _onScaleUpdate(double scale) {
-
-    if(scale == 1.0 || stopScale){
+    if (scale == 1.0 || stopScale) {
       return;
     }
 
@@ -126,7 +126,6 @@ class _FavPageState extends State<FavPage> with TickerProviderStateMixin {
     }
 
     previousScale = scale;
-
   }
 
   @override
@@ -145,7 +144,7 @@ class _FavPageState extends State<FavPage> with TickerProviderStateMixin {
                 onScaleUpdate: (details) {
                   _onScaleUpdate(details.scale);
                 },
-                onScaleEnd: (details){
+                onScaleEnd: (details) {
                   stopScale = false;
 
                   previousScale = 0;
@@ -185,17 +184,9 @@ Widget _buildGridItem(
           fit: StackFit.expand,
           children: [
             RoundNetImage(posterPath, "342"),
-            Positioned(
-              top: 0,
-              right: 0,
-              child: IconButton(
-                iconSize: 30,
-                icon: const Icon(Icons.bookmark),
-                onPressed: () {
-                  submit(result['id']);
-                },
-              ),
-            )
+            BookmarkMovie(() {
+              submit(result['id']);
+            })
           ],
         ),
       ),

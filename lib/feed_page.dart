@@ -114,18 +114,10 @@ Widget buildGridItem(
           fit: StackFit.expand,
           children: [
             RoundNetImage(posterPath, "780"),
-            Positioned(
-              top: 0,
-              right: 0,
-              child: IconButton(
-                iconSize: 50,
-                icon: const Icon(Icons.bookmark),
-                onPressed: () {
-                  if (movieIndex == null) return;
-                  submit(movieIndex);
-                },
-              ),
-            )
+            BookmarkMovie(() {
+              if (movieIndex == null) return;
+                submit(movieIndex);
+            })
           ],
         ),
       ),

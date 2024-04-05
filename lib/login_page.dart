@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_computing/util_cinema.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatelessWidget {
   final TextEditingController emailController = TextEditingController();
@@ -18,6 +19,8 @@ class LoginPage extends StatelessWidget {
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('userIsLogged', true);
       Navigator.pushReplacementNamed(context, '/home');
     } on FirebaseAuthException catch (e) {
       handleCinemaAppError(e.code, showPopup);

@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'util_cinema.dart';
 
 class RegistrationPage extends StatelessWidget {
@@ -19,6 +20,9 @@ class RegistrationPage extends StatelessWidget {
         password: passwordController.text.trim(),
       );
       Navigator.pushReplacementNamed(context, '/home');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('userIsLogged', true);
+
     } on FirebaseAuthException catch (e) {
       handleCinemaAppError(e.code, showPopup);
     }

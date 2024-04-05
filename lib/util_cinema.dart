@@ -87,6 +87,32 @@ Future<Map<String, dynamic>> getURL(String url) async {
   throw Exception();
 }
 
+class BookmarkMovie extends StatelessWidget {
+
+  final void Function() handleBookmark;
+
+  const BookmarkMovie(this.handleBookmark, {Key? key}) : super(key: key);
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: -5,
+      right: -10,
+      child: IconButton(
+        iconSize: 40,
+        icon: const Icon(Icons.bookmark),
+        highlightColor: Colors.blue.withOpacity(0.3),
+        color: Colors.lightBlue.shade200,
+        onPressed: () {
+          handleBookmark();
+        },
+      ),
+    );
+  }
+}
+
+
 class RoundNetImage extends StatelessWidget {
   final dynamic netPath;
   final String imageSize;

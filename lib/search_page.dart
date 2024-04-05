@@ -364,17 +364,7 @@ class MovieCard extends StatelessWidget {
               ),
             ],
           ),
-          Positioned(
-            top: -10,
-            right: -10,
-            child: IconButton(
-              iconSize: 30,
-              icon: const Icon(Icons.bookmark),
-              onPressed: () {
-                widget.pushFavMovFirebase(movieData['id']);
-              },
-            ),
-          ),
+          BookmarkMovie(() => widget.pushFavMovFirebase(movieData['id'])),
         ]),
       ),
     );
