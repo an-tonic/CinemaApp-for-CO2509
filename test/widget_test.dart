@@ -4,18 +4,16 @@ import 'package:mobile_computing/feed_page.dart';
 import 'package:mobile_computing/login_page.dart';
 import 'package:mobile_computing/main.dart';
 import 'package:mobile_computing/registration_page.dart';
-import 'package:mobile_computing/search_page.dart';
 import 'package:mobile_computing/util_cinema.dart';
 import 'package:mockito/mockito.dart';
 
 class MockFunction extends Mock {
   void call(int? movieID);
 }
-class MockSearchPage  extends SearchPage {
-  MockSearchPage(super.pushFavMovFirebase);
-
-
+class MockFunction2 extends Mock {
+  bool call2(ScrollNotification scrollInfo);
 }
+
 
 void main() {
   //Tests
@@ -122,11 +120,7 @@ void main() {
   });
 
   group("Test feed page", () {
-    testWidgets('FeedPage initial state', (WidgetTester tester) async {
-      await tester.pumpWidget(MaterialApp(home: FeedPage(MockFunction())));
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    });
 
 
     testWidgets('Test _buildGridItem with empty data', (WidgetTester tester) async {

@@ -8,17 +8,17 @@ import 'util_cinema.dart';
 
 class FavPage extends StatefulWidget {
   final DatabaseReference db;
+  final bool Function(ScrollNotification scrollInfo) scrollListener;
 
-  const FavPage(this.db, {Key? key}) : super(key: key);
+  const FavPage(this.db,this.scrollListener,  {Key? key}) : super(key: key);
 
   @override
   _FavPageState createState() => _FavPageState();
 }
 
-class _FavPageState extends State<FavPage> with TickerProviderStateMixin {
+class _FavPageState extends State<FavPage> {
   List<dynamic> _favoriteMovies = [];
-  late AnimationController _colorAnimationController;
-  late Animation _colorTween;
+
   late String uid;
   int crossAxisCountUser = 2;
   double previousScale = 0.0;
@@ -27,11 +27,6 @@ class _FavPageState extends State<FavPage> with TickerProviderStateMixin {
   @override
   initState() {
     uid = FirebaseAuth.instance.currentUser!.uid;
-    _colorAnimationController =
-        AnimationController(vsync: this, duration: const Duration(seconds: 0));
-    _colorTween =
-        ColorTween(begin: Colors.blue.shade900, end: Colors.red.shade900)
-            .animate(_colorAnimationController);
 
     fetchFavoriteMovies();
     _initPrefs();
@@ -40,7 +35,6 @@ class _FavPageState extends State<FavPage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _colorAnimationController.dispose();
     _savePrefs();
     super.dispose();
   }
@@ -95,14 +89,6 @@ class _FavPageState extends State<FavPage> with TickerProviderStateMixin {
     });
   }
 
-  bool _scrollListener(ScrollNotification scrollInfo) {
-    if (scrollInfo.metrics.maxScrollExtent == 0) {
-      return true;
-    }
-    _colorAnimationController.animateTo(
-        scrollInfo.metrics.pixels / scrollInfo.metrics.maxScrollExtent);
-    return false;
-  }
 
   bool stopScale = false;
 
@@ -131,40 +117,35 @@ class _FavPageState extends State<FavPage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: NotificationListener<ScrollNotification>(
-        onNotification: _scrollListener,
-        child: AnimatedBuilder(
-          animation: _colorAnimationController,
-          builder: (context, child) => Stack(
-            children: [
-              Container(
-                color: _colorTween.value,
-              ),
-              GestureDetector(
-                onScaleUpdate: (details) {
-                  _onScaleUpdate(details.scale);
-                },
-                onScaleEnd: (details) {
-                  stopScale = false;
+        onNotification: widget.scrollListener,
+        child: Stack(
+          children: [
+            GestureDetector(
+              onScaleUpdate: (details) {
+                _onScaleUpdate(details.scale);
+              },
+              onScaleEnd: (details) {
+                stopScale = false;
 
-                  previousScale = 0;
-                },
-                // onScaleEnd: (details) => previousScale = 0,
-                child: GridView.builder(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCountUser,
-                    mainAxisSpacing: 0,
-                    childAspectRatio: 0.7,
-                  ),
-                  itemCount: _favoriteMovies.length,
-                  itemBuilder: (context, index) {
-                    return _buildGridItem(
-                        context, _favoriteMovies[index], _submit);
-                  },
+                previousScale = 0;
+              },
+              // onScaleEnd: (details) => previousScale = 0,
+              child: GridView.builder(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCountUser,
+                  mainAxisSpacing: 0,
+                  childAspectRatio: 0.7,
                 ),
-              )
-            ],
-          ),
+                itemCount: _favoriteMovies.length,
+                itemBuilder: (context, index) {
+                  return _buildGridItem(
+                      context, _favoriteMovies[index], _submit);
+                },
+              ),
+            )
+          ],
         ),
       ),
     );

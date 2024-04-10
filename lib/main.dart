@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
         } else {
           return MaterialApp(
             navigatorKey: navigatorKey,
-            initialRoute: snapshot.data ?? '/home',
+            initialRoute: snapshot.data ?? '/',
             routes: {
               '/': (context) => LoginPage(),
               '/register': (context) => RegistrationPage(),

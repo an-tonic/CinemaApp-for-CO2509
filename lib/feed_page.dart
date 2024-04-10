@@ -3,43 +3,26 @@ import 'util_cinema.dart';
 
 class FeedPage extends StatefulWidget {
   final void Function(int? movieID) pushFavMovFirebase;
+  final bool Function(ScrollNotification scrollInfo) scrollListener;
 
-  const FeedPage(this.pushFavMovFirebase, {Key? key}) : super(key: key);
+  const FeedPage(this.pushFavMovFirebase, this.scrollListener, {Key? key}) : super(key: key);
 
   @override
   FeedPageState createState() => FeedPageState();
 }
 
-class FeedPageState extends State<FeedPage> with TickerProviderStateMixin {
+class FeedPageState extends State<FeedPage> {
   late Future<List<dynamic>> _fetchMoviesFuture;
-  late AnimationController _colorAnimationController;
-  late Animation _colorTween;
+
 
   @override
   initState() {
-    _colorAnimationController =
-        AnimationController(vsync: this, duration: Duration(seconds: 0));
-    _colorTween =
-        ColorTween(begin: Colors.blue.shade900, end: Colors.red.shade900)
-            .animate(_colorAnimationController);
-
     _fetchMoviesFuture = fetchMovies();
+
     super.initState();
   }
 
-  @override
-  void dispose() {
-    _colorAnimationController.dispose();
-    super.dispose();
-  }
 
-  bool _scrollListener(ScrollNotification scrollInfo) {
-    if (scrollInfo.depth == 0) {
-      _colorAnimationController.animateTo(
-          scrollInfo.metrics.pixels / scrollInfo.metrics.maxScrollExtent);
-    }
-    return true;
-  }
 
   Future<List> fetchMovies() async {
     String url =
@@ -52,17 +35,14 @@ class FeedPageState extends State<FeedPage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: AnimatedBuilder(
-      animation: _colorAnimationController,
-      builder: (context, child) => Container(
-        color: _colorTween.value,
-        child: FutureBuilder<List<dynamic>>(
+      backgroundColor: Colors.transparent,
+        body: FutureBuilder<List<dynamic>>(
           future: _fetchMoviesFuture,
           builder: (context, snapshot) {
             if (snapshot.hasData) {
               List<dynamic> results = snapshot.data!;
               return NotificationListener<ScrollNotification>(
-                onNotification: _scrollListener,
+                onNotification: widget.scrollListener,
                 child: GridView.builder(
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 1,
@@ -82,9 +62,7 @@ class FeedPageState extends State<FeedPage> with TickerProviderStateMixin {
               return const Center(child: CircularProgressIndicator());
             }
           },
-        ),
-      ),
-    ));
+        ));
   }
 }
 
